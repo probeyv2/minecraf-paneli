@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BedavaCraft - Sunucu Yönetimi</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #2c2f33;
+            --panel-bg: #23272a;
+            --primary: #7289da;
+            --success: #43b581;
+            --danger: #f04747;
+            --text: #ffffff;
+            --console-bg: #0c0c0c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+
+        body { background-color: var(--bg-color); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+        /* HEADER */
+        header { background: var(--panel-bg); padding: 15px 30px; border-bottom: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        .logo i { margin-right: 10px; color: var(--primary); }
+
+        /* CREATE SCREEN */
+        #create-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            text-align: center;
+        }
+
+        .create-box {
+            background: var(--panel-bg);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 500px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            background: #111;
+            border: 1px solid #444;
+            color: white;
+            border-radius: 5px;
+            font-size: 1.1rem;
+        }
+
+        .btn-create {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            width: 100%;
+            transition: 0.3s;
+        }
+
+        .btn-create:hover { background: #5b6eae; }
+
+        /* DASHBOARD (Hidden Initially) */
+        #dashboard { display: none; flex: 1; }
+        
+        .sidebar {
+            width: 250px;
+            background: var(--panel-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar button {
+            background: transparent;
+            color: #aaa;
+            border: none;
+            text-align: left;
+            padding: 15px;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .sidebar button:hover, .sidebar button.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .server-status-card {
+            background: var(--panel-bg);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .offline { background: var(--danger); }
+        .online { background: var(--success); }
+        .starting { background: #faa61a; color: black; }
+
+        .control-btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            margin: 10px;
+        }
+
+        .btn-start { background: var(--success); }
+        .btn-stop { background: var(--danger); }
+
+        .console-box {
+            background: var(--console-bg);
+            color: #ccc;
+            font-family: 'Consolas', monospace;
+            padding: 15px;
+            height: 300px;
+            overflow-y: auto;
+            border-radius: 5px;
+            border: 1px solid #333;
+            font-size: 0.9rem;
+        }
+
+        .log-line { margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 2px;}
+        .log-info { color: #43b581; }
+        .log-warn { color: #faa61a; }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo"><i class="fas fa-cube"></i> BedavaCraft</div>
+        <div id="user-info" style="display:none;">Hoşgeldin, Oyuncu</div>
+    </header>
+
+    <div id="create-screen">
+        <div class="create-box">
+            <h2><i class="fas fa-plus-circle"></i> Sunucunu Oluştur</h2>
+            <p style="color:#aaa; margin-top:10px;">Ücretsiz Minecraft sunucusu için bir isim belirle.</p>
+            
+            <input type="text" id="serverNameInput" placeholder="Sunucu Adı (Örn: KralOyuncu)">
+            <div style="text-align:left; color:#888; margin-bottom:20px; font-size:0.9rem;">
+                Adres: <span id="preview-ip" style="color:var(--primary)">...</span>.bedavacraft.com
+            </div>
+            
+            <button class="btn-create" onclick="createServer()">Sunucuyu Kur</button>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <div class="sidebar">
+            <button class="active"><i class="fas fa-server"></i> Sunucu</button>
+            <button><i class="fas fa-terminal"></i> Konsol</button>
+            <button><i class="fas fa-file-alt"></i> Kayıtlar</button>
+            <button><i class="fas fa-users"></i> Oyuncular</button>
+            <button><i class="fas fa-cog"></i> Ayarlar</button>
+        </div>
+
+        <div class="main-content">
+            <h2 id="dashboard-title">Sunucu Paneli</h2>
+            
+            <div class="server-status-card">
+                <h1 id="display-ip" style="margin-bottom:10px;">sunucu.bedavacraft.com</h1>
+                <span id="status-badge" class="status-badge offline">ÇEVRİMDIŞI</span>
+                
+                <div style="margin: 20px 0;">
+                    <button class="control-btn btn-start" id="startBtn" onclick="startServer()">BAŞLAT</button>
+                    <button class="control-btn btn-stop" onclick="stopServer()" style="display:none;" id="stopBtn">DURDUR</button>
+                </div>
+
+                <div style="display:flex; justify-content:center; gap:30px; color:#aaa;">
+                    <div><i class="fas fa-microchip"></i> RAM: 2 GB</div>
+                    <div><i class="fas fa-users"></i> Slot: 20</div>
+                    <div><i class="fas fa-signal"></i> Ping: 12ms</div>
+                </div>
+            </div>
+
+            <div class="console-box" id="console">
+                <div class="log-line">Sunucu kapalı. Başlatmak için butona basın...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sunucu ismini önizleme
+        const input = document.getElementById('serverNameInput');
+        const preview = document.getElementById('preview-ip');
+        input.addEventListener('input', function() {
+            preview.innerText = this.value || "...";
+        });
+
+        // Sunucu Oluşturma Fonksiyonu
+        function createServer() {
+            const name = input.value;
+            if(name.length < 3) {
+                alert("Lütfen en az 3 karakterli bir isim girin!");
+                return;
+            }
+
+            // Ekran değiştirme
+            document.getElementById('create-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'flex';
+            document.getElementById('user-info').style.display = 'block';
+            
+            // İsimleri güncelle
+            document.getElementById('display-ip').innerText = name + ".bedavacraft.com";
+        }
+
+        // Konsol Log Simülasyonu
+        const logs = [
+            "Loading libraries, please wait...",
+            "Loading properties...",
+            "Default game type: SURVIVAL",
+            "Generating keypair...",
+            "Starting Minecraft server on *:25565",
+            "Preparing level 'world'",
+            "Preparing start region for level 0",
+            "Preparing spawn area: 24%",
+            "Preparing spawn area: 68%",
+            "Done (4.2s)! For help, type 'help'",
+            "Starting remote control listener..."
+        ];
+
+        let isRunning = false;
+
+        function startServer() {
+            if(isRunning) return;
+            isRunning = true;
+            
+            const btnStart = document.getElementById('startBtn');
+            const statusBadge = document.getElementById('status-badge');
+            const consoleBox = document.getElementById('console');
+
+            btnStart.style.display = 'none';
+            statusBadge.className = "status-badge starting";
+            statusBadge.innerText = "BAŞLATILIYOR...";
+            
+            consoleBox.innerHTML = ""; // Konsolu temizle
+
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i < logs.length) {
+                    const line = document.createElement('div');
+                    line.className = "log-line";
+                    const time = new Date().toLocaleTimeString();
+                    line.innerHTML = `<span style="color:#666">[${time}]</span> <span class="log-info">[INFO]</span> ${logs[i]}`;
+                    consoleBox.appendChild(line);
+                    consoleBox.scrollTop = consoleBox.scrollHeight; // Otomatik aşağı kaydır
+                    i++;
+                } else {
+                    clearInterval(interval);
+                    statusBadge.className = "status-badge online";
+                    statusBadge.innerText = "ÇEVRİMİÇİ";
+                    document.getElementById('stopBtn').style.display = 'inline-block';
+                    
+                    // Ses efekti (isteğe bağlı)
+                    // new Audio('ding.mp3').play();
+                }
+            }, 800); // Her 0.8 saniyede bir log yaz
+        }
+
+        function stopServer() {
+            isRunning = false;
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('startBtn').style.display = 'inline-block';
+            document.getElementById('status-badge').className = "status-badge offline";
+            document.getElementById('status-badge').innerText = "ÇEVRİMDIŞI";
+            
+            const consoleBox = document.getElementById('console');
+            const line = document.createElement('div');
+            line.className = "log-line";
+            line.innerHTML = `<span style="color:red">[STOP]</span> Sunucu kapatıldı.`;
+            consoleBox.appendChild(line);
+        }
+    </script>
+</body>
+</html>
