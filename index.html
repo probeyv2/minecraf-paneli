@@ -1,42 +1,56 @@
-<script>
-    /* DİKKAT: Aşağıdaki tırnak içine Playit.gg'den aldığın 
-       örneğin "shiny-rock.at.ply.gg" gibi olan adresi yaz.
-    */
-    const myServerIP = "127.0.0.1:25565"; 
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Minecraft Sunucu Paneli</title>
+    <style>
+        /* TASARIM KISMI (CSS) */
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; padding-top: 50px; }
+        .status-card { background: #2c2f33; padding: 20px; border-radius: 10px; display: inline-block; border: 2px solid #7289da; }
+        .status-badge { padding: 10px 20px; border-radius: 5px; font-weight: bold; margin-top: 10px; display: inline-block; }
+        .offline { background: #f04747; }
+        .online { background: #43b581; }
+    </style>
+</head>
+<body>
 
-    async function checkServerStatus() {
-        const statusBadge = document.getElementById('status-badge');
-        const playerCount = document.getElementById('player-count'); // Eğer HTML'de bu ID varsa
+    <div class="status-card">
+        <h1>Sunucu Durumu</h1>
+        <h2 id="ip-display">Yükleniyor...</h2>
+        <div id="status-badge" class="status-badge offline">KONTROL EDİLİYOR...</div>
+        <p id="player-count">Oyuncu bilgisi alınıyor...</p>
+    </div>
+
+    <script>
+        // BURAYI KENDİ PLAYIT ADRESİNLE DEĞİŞTİR
+        const myServerIP = "BURAYA_PLAYIT_ADRESINI_YAZ.at.ply.gg"; 
         
-        try {
-            // Ücretsiz bir API kullanarak Minecraft sunucuna ping atıyoruz
-            const response = await fetch(`https://api.mcsrvstat.us/2/${myServerIP}`);
-            const data = await response.json();
+        document.getElementById('ip-display').innerText = myServerIP;
 
-            if (data.online === true) {
-                statusBadge.className = "status-badge online";
-                statusBadge.innerText = "● ÇEVRİMİÇİ";
-                statusBadge.style.backgroundColor = "#43b581";
-                
-                if(playerCount) {
-                    playerCount.innerText = `Aktif Oyuncu: ${data.players.online}/${data.players.max}`;
+        async function checkServerStatus() {
+            const badge = document.getElementById('status-badge');
+            const players = document.getElementById('player-count');
+            
+            try {
+                const res = await fetch(`https://api.mcsrvstat.us/2/${myServerIP}`);
+                const data = await res.json();
+
+                if (data.online) {
+                    badge.className = "status-badge online";
+                    badge.innerText = "● ÇEVRİMİÇİ";
+                    players.innerText = `Aktif Oyuncu: ${data.players.online} / ${data.players.max}`;
+                } else {
+                    badge.className = "status-badge offline";
+                    badge.innerText = "● ÇEVRİMDIŞI (PC KAPALI)";
+                    players.innerText = "Kimse oynamıyor.";
                 }
-                console.log("Sunucu açık!");
-            } else {
-                statusBadge.className = "status-badge offline";
-                statusBadge.innerText = "● ÇEVRİMDIŞI (PC KAPALI)";
-                statusBadge.style.backgroundColor = "#f04747";
-                console.log("Sunucu kapalı.");
+            } catch (e) {
+                badge.innerText = "HATA OLUŞTU";
             }
-        } catch (error) {
-            console.error("Hata oluştu:", error);
-            statusBadge.innerText = "SİSTEM HATASI";
         }
-    }
 
-    // Site açıldığında kontrol et
-    checkServerStatus();
-    
-    // Her 30 saniyede bir durumu otomatik güncelle
-    setInterval(checkServerStatus, 30000);
-</script>
+        checkServerStatus();
+        setInterval(checkServerStatus, 30000); // 30 saniyede bir güncelle
+    </script>
+</body>
+</html>
