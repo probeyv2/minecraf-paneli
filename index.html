@@ -3,98 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minecraft Sunucu Paneli</title>
+    <title>BedavaCraft - Gerçek Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        /* TASARIM */
-        body { 
-            background-color: #121212; 
-            color: white; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0;
-        }
-        .container {
-            background: #1e1e1e;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            text-align: center;
-            border: 1px solid #333;
-            width: 90%;
-            max-width: 400px;
-        }
-        h1 { color: #43a047; margin-bottom: 10px; }
-        .ip-box {
-            background: #000;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            color: #ffb74d;
-            margin: 20px 0;
-            border: 1px dashed #555;
-        }
-        .status-badge {
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .online { background-color: #2e7d32; color: white; }
-        .offline { background-color: #c62828; color: white; }
-        .loading { background-color: #555; color: white; }
+        :root { --bg: #2c2f33; --panel: #23272a; --primary: #7289da; --success: #43b581; --danger: #f04747; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+        header { background: var(--panel); padding: 15px 30px; border-bottom: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        .dashboard { display: flex; flex: 1; }
+        .sidebar { width: 220px; background: var(--panel); padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+        .sidebar button { background: transparent; color: #aaa; border: none; text-align: left; padding: 12px; cursor: pointer; border-radius: 5px; transition: 0.3s; }
+        .sidebar button.active { background: var(--primary); color: white; }
+        .main-content { flex: 1; padding: 40px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        .status-card { background: var(--panel); padding: 40px; border-radius: 15px; text-align: center; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .status-badge { display: inline-block; padding: 10px 25px; border-radius: 50px; font-weight: bold; margin: 20px 0; font-size: 1.2rem; }
+        .offline { background: var(--danger); }
+        .online { background: var(--success); }
+        .loading { background: #faa61a; color: #000; }
+        .ip-display { font-family: 'Consolas', monospace; background: #000; padding: 10px; border-radius: 5px; color: #ffb74d; margin: 10px 0; border: 1px solid #444; }
+        .info-grid { display: flex; justify-content: center; gap: 40px; margin-top: 20px; color: #aaa; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>CRAFT PANEL</h1>
-        <p>Sunucu Adresi:</p>
-        <div class="ip-box" id="ip-text">Yükleniyor...</div>
-        
-        <div id="status-badge" class="status-badge loading">KONTROL EDİLİYOR...</div>
-        
-        <p id="player-count" style="margin-top: 20px; color: #aaa;">Oyuncu verisi bekleniyor...</p>
+    <header>
+        <div class="logo"><i class="fas fa-cube"></i> BedavaCraft</div>
+        <div>Yönetici Paneli</div>
+    </header>
+
+    <div class="dashboard">
+        <div class="sidebar">
+            <button class="active"><i class="fas fa-server"></i> Sunucu</button>
+            <button><i class="fas fa-terminal"></i> Konsol</button>
+            <button><i class="fas fa-file-alt"></i> Dosyalar</button>
+            <button><i class="fas fa-users"></i> Oyuncular</button>
+        </div>
+
+        <div class="main-content">
+            <div class="status-card">
+                <h2 id="server-title">Sunucu Durumu</h2>
+                <div class="ip-display" id="ip-text">Yükleniyor...</div>
+                
+                <div id="status-badge" class="status-badge loading">KONTROL EDİLİYOR</div>
+
+                <div class="info-grid">
+                    <div><i class="fas fa-users"></i> <span id="player-count">-/-</span></div>
+                    <div><i class="fas fa-microchip"></i> 4 GB RAM</div>
+                    <div><i class="fas fa-clock"></i> 7/24 Aktif</div>
+                </div>
+                
+                <p style="margin-top: 30px; font-size: 0.8rem; color: #666;">
+                    *Bu panel Playit.gg üzerinden evindeki sunucuya bağlıdır.
+                </p>
+            </div>
+        </div>
     </div>
 
     <script>
-        // --- BURAYI DÜZENLE ---
-        const myServerIP = "127.0.0.1:25565"; 
-        // ----------------------
+        // --- BURAYA PLAYIT ADRESİNİ YAZ (at.ply.gg olan) ---
+        const myServerIP = "ADRESINI_BURAYA_YAZ.at.ply.gg"; 
+        // --------------------------------------------------
 
         document.getElementById('ip-text').innerText = myServerIP;
 
-        async function checkStatus() {
+        async function updateStatus() {
             const badge = document.getElementById('status-badge');
             const players = document.getElementById('player-count');
 
             try {
-                const response = await fetch(`https://api.mcsrvstat.us/2/${myServerIP}`);
-                const data = await response.json();
+                const res = await fetch(`https://api.mcsrvstat.us/2/${myServerIP}`);
+                const data = await res.json();
 
                 if (data.online) {
-                    badge.innerHTML = "● SUNUCU AÇIK";
+                    badge.innerText = "● ÇEVRİMİÇİ";
                     badge.className = "status-badge online";
-                    players.innerText = `Aktif Oyuncular: ${data.players.online} / ${data.players.max}`;
+                    players.innerText = `${data.players.online} / ${data.players.max} Oyuncu`;
                 } else {
-                    badge.innerHTML = "○ SUNUCU KAPALI";
+                    badge.innerText = "● ÇEVRİMDIŞI";
                     badge.className = "status-badge offline";
-                    players.innerText = "PC kapalı olduğu için erişilemiyor.";
+                    players.innerText = "Sunucu Kapalı";
                 }
-            } catch (error) {
-                badge.innerText = "BAĞLANTI HATASI";
-                console.error("Hata:", error);
+            } catch (err) {
+                badge.innerText = "BAĞLANTI YOK";
+                console.error(err);
             }
         }
 
-        // Sayfa açıldığında çalıştır
-        checkStatus();
-        // 30 saniyede bir yenile
-        setInterval(checkStatus, 30000);
+        updateStatus();
+        setInterval(updateStatus, 20000); // 20 saniyede bir kontrol et
     </script>
-
 </body>
 </html>
