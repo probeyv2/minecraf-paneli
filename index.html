@@ -1,49 +1,166 @@
-<?php
-// config.php - API Ayarları
-$apiKey = "senin_pterodactyl_application_api_keyin";
-$panelUrl = "https://panel.seninsiten.com";
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Free Host Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --bg: #111827; --card: #1f2937; --blue: #3b82f6; --green: #10b981; --red: #ef4444; --text: #e5e7eb; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; height: 100vh; }
+        
+        /* SOL MENÜ */
+        .sidebar { width: 70px; background: #000; display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid #333; }
+        .icon-btn { font-size: 1.5rem; color: #6b7280; margin-bottom: 30px; cursor: pointer; }
+        .icon-btn.active { color: var(--blue); }
+        .icon-btn:hover { color: #fff; }
 
-// Kullanıcı butona bastığında çalışacak fonksiyon
-function createServer($userId, $serverName) {
-    global $apiKey, $panelUrl;
+        /* İÇERİK */
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; overflow: hidden; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-badge { padding: 5px 10px; border-radius: 5px; background: var(--red); font-size: 0.8rem; font-weight: bold; }
+        .status-badge.online { background: var(--green); }
 
-    $data = [
-        "name" => $serverName,
-        "user" => $userId, // Pterodactyl'deki kullanıcı ID'si
-        "nest" => 1, // Minecraft Nest ID
-        "egg" => 5, // Playit destekli Egg ID
-        "docker_image" => "ghcr.io/pterodactyl/yolks:java_17",
-        "startup" => "java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar",
-        "environment" => [
-            "SERVER_JARFILE" => "server.jar",
-            "BUILD_NUMBER" => "latest"
-        ],
-        "limits" => [
-            "memory" => 1024, // 1 GB RAM
-            "swap" => 0,
-            "disk" => 5000, // 5 GB Disk
-            "io" => 500,
-            "cpu" => 100 // %100 CPU
-        ],
-        "feature_limits" => [
-            "databases" => 0,
-            "backups" => 0
-        ]
-    ];
+        /* KARTLAR */
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 8px; border: 1px solid #374151; }
+        .card h4 { margin: 0 0 10px 0; color: #9ca3af; font-size: 0.8rem; }
+        .card .val { font-size: 1.2rem; font-weight: bold; }
 
-    $ch = curl_init($panelUrl . "/api/application/servers");
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "Authorization: Bearer " . $apiKey,
-        "Content-Type: application/json",
-        "Accept: Application/vnd.pterodactyl.v1+json"
-    ]);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        /* KONSOL */
+        .console-box { flex: 1; background: #000; border-radius: 8px; display: flex; flex-direction: column; border: 1px solid #333; overflow: hidden; }
+        .logs { flex: 1; padding: 15px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; color: #d1d5db; }
+        .input-area { display: flex; border-top: 1px solid #333; }
+        .input-area input { flex: 1; background: #111; border: none; color: white; padding: 15px; outline: none; }
 
-    $response = curl_exec($ch);
-    curl_close($ch);
+        /* DOSYALAR */
+        .file-list { background: var(--card); border-radius: 8px; overflow-y: auto; flex: 1; }
+        .file-row { padding: 12px; border-bottom: 1px solid #374151; display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .file-row:hover { background: #374151; }
+        
+        /* BUTONLAR */
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-start { background: var(--blue); }
+        .btn-stop { background: var(--red); display: none; }
+        .btn-renew { background: var(--green); width: 100%; margin-top: 10px; }
 
-    return $response; // Başarılıysa sunucu oluştu demektir!
-}
-?>
+        .page { display: none; height: 100%; }
+        .page.active { display: flex; flex-direction: column; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="icon-btn active" onclick="nav('home')"><i class="fas fa-server"></i></div>
+        <div class="icon-btn" onclick="nav('files')"><i class="fas fa-folder"></i></div>
+    </div>
+
+    <div class="main">
+        <div class="header">
+            <div>
+                <h2 id="ip-addr" style="margin:0; cursor:pointer" title="IP Kopyala">IP Yükleniyor...</h2>
+                <div style="margin-top:5px;"><span id="status-badge" class="status-badge">Çevrimdışı</span></div>
+            </div>
+            <div>
+                <button id="btn-start" class="btn btn-start" onclick="startSrv()">BAŞLAT</button>
+                <button id="btn-stop" class="btn btn-stop" onclick="cmd('stop')">DURDUR</button>
+            </div>
+        </div>
+
+        <div id="page-home" class="page active">
+            <div class="grid">
+                <div class="card"><h4>CPU</h4><div class="val">0%</div></div>
+                <div class="card"><h4>RAM</h4><div class="val">-- / --</div></div>
+                <div class="card" style="border-color:var(--green)">
+                    <h4>KALAN SÜRE</h4>
+                    <div class="val" id="timer">05:00:00</div>
+                    <button class="btn btn-renew" onclick="renew()">+5 SAAT</button>
+                </div>
+            </div>
+            <div class="console-box">
+                <div class="logs" id="logs"></div>
+                <div class="input-area">
+                    <input type="text" id="cmd-in" placeholder="Komut..." onkeydown="if(event.key==='Enter') send()">
+                </div>
+            </div>
+        </div>
+
+        <div id="page-files" class="page">
+            <h3 id="path-txt" style="margin-bottom: 10px;">/</h3>
+            <div class="file-list" id="files-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        // IP AYARI
+        let myIp = localStorage.getItem('srv_ip') || prompt("Sunucu IP Adresini Gir (Playit.gg):");
+        if(myIp) localStorage.setItem('srv_ip', myIp);
+        document.getElementById('ip-addr').innerText = myIp;
+
+        // SOCKET DİNLEME
+        socket.on('log', msg => {
+            const l = document.getElementById('logs');
+            l.innerHTML += `<div>${msg}</div>`;
+            l.scrollTop = l.scrollHeight;
+        });
+
+        socket.on('status', st => {
+            const bdg = document.getElementById('status-badge');
+            const bs = document.getElementById('btn-start');
+            const bp = document.getElementById('btn-stop');
+            if(st === 'online') {
+                bdg.innerText = 'Çevrimiçi'; bdg.classList.add('online');
+                bs.style.display = 'none'; bp.style.display = 'block';
+            } else {
+                bdg.innerText = 'Çevrimdışı'; bdg.classList.remove('online');
+                bs.style.display = 'block'; bp.style.display = 'none';
+            }
+        });
+
+        socket.on('timer', s => {
+            const h = Math.floor(s / 3600).toString().padStart(2,'0');
+            const m = Math.floor((s % 3600) / 60).toString().padStart(2,'0');
+            const sec = (s % 60).toString().padStart(2,'0');
+            document.getElementById('timer').innerText = `${h}:${m}:${sec}`;
+        });
+
+        // FONKSİYONLAR
+        function nav(p) {
+            document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+            document.getElementById('page-'+p).classList.add('active');
+            document.querySelectorAll('.icon-btn').forEach(x => x.classList.remove('active'));
+            if(p === 'files') loadFiles('');
+        }
+
+        function startSrv() { fetch('/api/start', {method:'POST'}); nav('home'); }
+        function cmd(c) { fetch('/api/cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cmd:c})}); }
+        function send() { const i = document.getElementById('cmd-in'); cmd(i.value); i.value = ''; }
+        function renew() { fetch('/api/renew', {method:'POST'}); }
+
+        async function loadFiles(path) {
+            document.getElementById('path-txt').innerText = "/" + path;
+            const res = await fetch('/api/files?path=' + path);
+            const data = await res.json();
+            const box = document.getElementById('files-container');
+            box.innerHTML = "";
+            
+            if(path !== "") {
+                const up = path.split('/').slice(0,-1).join('/');
+                box.innerHTML += `<div class="file-row" onclick="loadFiles('${up}')"><i class="fas fa-level-up-alt"></i> .. (Geri)</div>`;
+            }
+
+            data.forEach(f => {
+                const icon = f.type === 'folder' ? 'fa-folder' : 'fa-file';
+                const color = f.type === 'folder' ? '#f59e0b' : '#3b82f6';
+                const action = f.type === 'folder' ? `loadFiles('${path ? path + '/' + f.name : f.name}')` : '';
+                
+                box.innerHTML += `
+                    <div class="file-row" onclick="${action}">
+                        <i class="fas ${icon}" style="color:${color}"></i> ${f.name}
+                    </div>`;
+            });
+        }
+    </script>
+</body>
+</html>
