@@ -1,93 +1,49 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BedavaCraft | Sunucu Yönetimi</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root { --bg: #2c2f33; --panel: #23272a; --primary: #7289da; --success: #43b581; --danger: #f04747; --text: #fff; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background-color: var(--bg); color: var(--text); min-height: 100vh; }
-        header { background: var(--panel); padding: 15px 30px; border-bottom: 2px solid var(--primary); display: flex; justify-content: space-between; align-items: center; }
-        .dashboard { display: flex; min-height: calc(100vh - 65px); }
-        .sidebar { width: 240px; background: var(--panel); padding: 20px; display: flex; flex-direction: column; gap: 10px; border-right: 1px solid #333; }
-        .sidebar button { background: transparent; color: #aaa; border: none; text-align: left; padding: 12px; cursor: pointer; border-radius: 5px; font-size: 14px; }
-        .sidebar button.active { background: var(--primary); color: white; }
-        .main-content { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-        .status-card { background: var(--panel); padding: 40px; border-radius: 10px; text-align: center; width: 100%; max-width: 700px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        .status-badge { display: inline-block; padding: 10px 30px; border-radius: 5px; font-weight: bold; margin: 25px 0; font-size: 1.1rem; text-transform: uppercase; }
-        .offline { background: var(--danger); }
-        .online { background: var(--success); }
-        .checking { background: #faa61a; color: #000; }
-        .ip-display { font-family: 'Consolas', monospace; background: #111; padding: 15px; border-radius: 5px; color: #7289da; border: 1px solid #444; font-size: 1.2rem; }
-        .stats { display: flex; justify-content: center; gap: 50px; margin-top: 30px; border-top: 1px solid #333; padding-top: 30px; }
-    </style>
-</head>
-<body>
+<?php
+// config.php - API Ayarları
+$apiKey = "senin_pterodactyl_application_api_keyin";
+$panelUrl = "https://panel.seninsiten.com";
 
-    <header>
-        <div style="font-size: 1.5rem; font-weight: bold;"><i class="fas fa-cube" style="color:var(--primary)"></i> Aternos Simülatör</div>
-        <div id="user-display">Hoş geldin, Admin</div>
-    </header>
+// Kullanıcı butona bastığında çalışacak fonksiyon
+function createServer($userId, $serverName) {
+    global $apiKey, $panelUrl;
 
-    <div class="dashboard">
-        <div class="sidebar">
-            <button class="active"><i class="fas fa-server"></i> Sunucu</button>
-            <button><i class="fas fa-terminal"></i> Konsol</button>
-            <button><i class="fas fa-cog"></i> Ayarlar</button>
-            <button><i class="fas fa-user-shield"></i> Operatörler</button>
-        </div>
+    $data = [
+        "name" => $serverName,
+        "user" => $userId, // Pterodactyl'deki kullanıcı ID'si
+        "nest" => 1, // Minecraft Nest ID
+        "egg" => 5, // Playit destekli Egg ID
+        "docker_image" => "ghcr.io/pterodactyl/yolks:java_17",
+        "startup" => "java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar server.jar",
+        "environment" => [
+            "SERVER_JARFILE" => "server.jar",
+            "BUILD_NUMBER" => "latest"
+        ],
+        "limits" => [
+            "memory" => 1024, // 1 GB RAM
+            "swap" => 0,
+            "disk" => 5000, // 5 GB Disk
+            "io" => 500,
+            "cpu" => 100 // %100 CPU
+        ],
+        "feature_limits" => [
+            "databases" => 0,
+            "backups" => 0
+        ]
+    ];
 
-        <div class="main-content">
-            <div class="status-card">
-                <h1 id="server-name">Benim Sunucum</h1>
-                <div class="ip-display" id="ip-addr">Yükleniyor...</div>
-                
-                <div id="status-box" class="status-badge checking">Kontrol Ediliyor...</div>
+    $ch = curl_init($panelUrl . "/api/application/servers");
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Authorization: Bearer " . $apiKey,
+        "Content-Type: application/json",
+        "Accept: Application/vnd.pterodactyl.v1+json"
+    ]);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
-                <div class="stats">
-                    <div><i class="fas fa-users"></i> <p id="p-count">0 / 0</p></div>
-                    <div><i class="fas fa-memory"></i> <p>4 GB RAM</p></div>
-                    <div><i class="fas fa-hdd"></i> <p>10 GB Disk</p></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    <script>
-        // --- BURAYI KESİNLİKLE KENDİ PLAYIT ADRESİNLE DEĞİŞTİR ---
-        const SERVER_IP = "127.0.0.1:25565"; 
-        // -------------------------------------------------------
-
-        document.getElementById('ip-addr').innerText = SERVER_IP;
-
-        async function getStatus() {
-            const box = document.getElementById('status-box');
-            const pText = document.getElementById('p-count');
-
-            try {
-                // API'den veri çekiyoruz
-                const res = await fetch(`https://api.mcsrvstat.us/2/${SERVER_IP}`);
-                const data = await res.json();
-
-                if (data.online) {
-                    box.innerText = "Çevrimiçi";
-                    box.className = "status-badge online";
-                    pText.innerText = `${data.players.online} / ${data.players.max}`;
-                } else {
-                    box.innerText = "Çevrimdışı (PC Kapalı)";
-                    box.className = "status-badge offline";
-                    pText.innerText = "0 / 0";
-                }
-            } catch (e) {
-                box.innerText = "Hata Oluştu";
-            }
-        }
-
-        getStatus();
-        setInterval(getStatus, 15000); // 15 saniyede bir kontrol et
-    </script>
-</body>
-</html>
-
+    return $response; // Başarılıysa sunucu oluştu demektir!
+}
+?>
