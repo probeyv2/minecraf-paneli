@@ -2,163 +2,110 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Free Host Panel</title>
+    <title>Kontrol Paneli</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --bg: #111827; --card: #1f2937; --blue: #3b82f6; --green: #10b981; --red: #ef4444; --text: #e5e7eb; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; height: 100vh; }
-        
-        /* SOL MENÜ */
-        .sidebar { width: 70px; background: #000; display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid #333; }
-        .icon-btn { font-size: 1.5rem; color: #6b7280; margin-bottom: 30px; cursor: pointer; }
-        .icon-btn.active { color: var(--blue); }
-        .icon-btn:hover { color: #fff; }
-
-        /* İÇERİK */
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; overflow: hidden; }
+        :root { --bg: #0b0f15; --card: #161b22; --blue: #58a6ff; --green: #238636; --red: #da3633; --text: #c9d1d9; }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
+        .sidebar { width: 80px; background: #010409; display: flex; flex-direction: column; align-items: center; padding-top: 20px; border-right: 1px solid #30363d; }
+        .nav-link { font-size: 1.5rem; color: #8b949e; margin-bottom: 25px; cursor: pointer; transition: 0.2s; }
+        .nav-link:hover, .nav-link.active { color: var(--blue); }
+        .container { flex: 1; padding: 25px; overflow-y: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .status-badge { padding: 5px 10px; border-radius: 5px; background: var(--red); font-size: 0.8rem; font-weight: bold; }
-        .status-badge.online { background: var(--green); }
-
-        /* KARTLAR */
-        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
-        .card { background: var(--card); padding: 20px; border-radius: 8px; border: 1px solid #374151; }
-        .card h4 { margin: 0 0 10px 0; color: #9ca3af; font-size: 0.8rem; }
-        .card .val { font-size: 1.2rem; font-weight: bold; }
-
-        /* KONSOL */
-        .console-box { flex: 1; background: #000; border-radius: 8px; display: flex; flex-direction: column; border: 1px solid #333; overflow: hidden; }
-        .logs { flex: 1; padding: 15px; overflow-y: auto; font-family: monospace; font-size: 0.9rem; color: #d1d5db; }
-        .input-area { display: flex; border-top: 1px solid #333; }
-        .input-area input { flex: 1; background: #111; border: none; color: white; padding: 15px; outline: none; }
-
-        /* DOSYALAR */
-        .file-list { background: var(--card); border-radius: 8px; overflow-y: auto; flex: 1; }
-        .file-row { padding: 12px; border-bottom: 1px solid #374151; display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .file-row:hover { background: #374151; }
-        
-        /* BUTONLAR */
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-start { background: var(--blue); }
-        .btn-stop { background: var(--red); display: none; }
-        .btn-renew { background: var(--green); width: 100%; margin-top: 10px; }
-
-        .page { display: none; height: 100%; }
-        .page.active { display: flex; flex-direction: column; }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .card { background: var(--card); padding: 15px; border-radius: 8px; border: 1px solid #30363d; }
+        .card small { color: #8b949e; display: block; margin-bottom: 5px; font-size: 0.75rem; }
+        .card span { font-size: 1.2rem; font-weight: bold; }
+        .console { background: #000; height: 400px; border-radius: 8px; border: 1px solid #30363d; display: flex; flex-direction: column; }
+        .logs { flex: 1; padding: 15px; overflow-y: auto; font-family: monospace; font-size: 13px; color: #d1d5db; line-height: 1.5; }
+        .input { border-top: 1px solid #30363d; display: flex; }
+        .input input { flex: 1; background: transparent; border: none; color: #fff; padding: 12px; outline: none; }
+        .btn { padding: 8px 20px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: #fff; }
+        .btn-start { background: var(--green); }
+        .btn-stop { background: var(--red); }
+        .btn-renew { background: var(--blue); width: 100%; margin-top: 10px; }
+        .page { display: none; } .active-page { display: block; }
+        .file-item { padding: 10px; border-bottom: 1px solid #30363d; cursor: pointer; display: flex; gap: 10px; }
+        .file-item:hover { background: #21262d; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <div class="icon-btn active" onclick="nav('home')"><i class="fas fa-server"></i></div>
-        <div class="icon-btn" onclick="nav('files')"><i class="fas fa-folder"></i></div>
+        <div class="nav-link active" onclick="show('dash', this)"><i class="fas fa-terminal"></i></div>
+        <div class="nav-link" onclick="show('files', this)"><i class="fas fa-folder"></i></div>
     </div>
-
-    <div class="main">
+    <div class="container">
         <div class="header">
+            <h2 id="display-ip">Yükleniyor...</h2>
             <div>
-                <h2 id="ip-addr" style="margin:0; cursor:pointer" title="IP Kopyala">IP Yükleniyor...</h2>
-                <div style="margin-top:5px;"><span id="status-badge" class="status-badge">Çevrimdışı</span></div>
-            </div>
-            <div>
-                <button id="btn-start" class="btn btn-start" onclick="startSrv()">BAŞLAT</button>
-                <button id="btn-stop" class="btn btn-stop" onclick="cmd('stop')">DURDUR</button>
+                <button class="btn btn-start" onclick="fetch('/api/start', {method:'POST'})">BAŞLAT</button>
             </div>
         </div>
-
-        <div id="page-home" class="page active">
-            <div class="grid">
-                <div class="card"><h4>CPU</h4><div class="val">0%</div></div>
-                <div class="card"><h4>RAM</h4><div class="val">-- / --</div></div>
-                <div class="card" style="border-color:var(--green)">
-                    <h4>KALAN SÜRE</h4>
-                    <div class="val" id="timer">05:00:00</div>
-                    <button class="btn btn-renew" onclick="renew()">+5 SAAT</button>
-                </div>
+        <div class="stats">
+            <div class="card"><small>DURUM</small><span id="status">Çevrimdışı</span></div>
+            <div class="card"><small>CPU</small><span>%0.00</span></div>
+            <div class="card"><small>RAM</small><span>0MB / 2GB</span></div>
+            <div class="card" style="border-color: var(--blue);">
+                <small>KALAN SÜRE</small><span id="time">--:--:--</span>
+                <button class="btn btn-renew" onclick="fetch('/api/renew', {method:'POST'})">SÜRE EKLE</button>
             </div>
-            <div class="console-box">
+        </div>
+        <div id="dash" class="page active-page">
+            <div class="console">
                 <div class="logs" id="logs"></div>
-                <div class="input-area">
-                    <input type="text" id="cmd-in" placeholder="Komut..." onkeydown="if(event.key==='Enter') send()">
-                </div>
+                <div class="input"><input type="text" id="cmd" placeholder="Komut gönder..." onkeydown="if(event.key==='Enter') sendCmd()"></div>
             </div>
         </div>
-
-        <div id="page-files" class="page">
-            <h3 id="path-txt" style="margin-bottom: 10px;">/</h3>
-            <div class="file-list" id="files-container"></div>
+        <div id="files" class="page">
+            <div id="file-list" class="card"></div>
         </div>
     </div>
-
     <script>
         const socket = io();
-        
-        // IP AYARI
-        let myIp = localStorage.getItem('srv_ip') || prompt("Sunucu IP Adresini Gir (Playit.gg):");
-        if(myIp) localStorage.setItem('srv_ip', myIp);
-        document.getElementById('ip-addr').innerText = myIp;
+        const ip = localStorage.getItem('ip') || prompt("IP Girin:");
+        if(ip) { localStorage.setItem('ip', ip); document.getElementById('display-ip').innerText = ip; }
 
-        // SOCKET DİNLEME
-        socket.on('log', msg => {
+        socket.on('console', m => {
             const l = document.getElementById('logs');
-            l.innerHTML += `<div>${msg}</div>`;
+            l.innerHTML += `<div>${m}</div>`;
             l.scrollTop = l.scrollHeight;
         });
 
-        socket.on('status', st => {
-            const bdg = document.getElementById('status-badge');
-            const bs = document.getElementById('btn-start');
-            const bp = document.getElementById('btn-stop');
-            if(st === 'online') {
-                bdg.innerText = 'Çevrimiçi'; bdg.classList.add('online');
-                bs.style.display = 'none'; bp.style.display = 'block';
-            } else {
-                bdg.innerText = 'Çevrimdışı'; bdg.classList.remove('online');
-                bs.style.display = 'block'; bp.style.display = 'none';
-            }
+        socket.on('status', s => { document.getElementById('status').innerText = s === 'online' ? 'Çevrimiçi' : 'Çevrimdışı'; });
+
+        socket.on('time', s => {
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            const sec = s % 60;
+            document.getElementById('time').innerText = h + ":" + m + ":" + sec;
         });
 
-        socket.on('timer', s => {
-            const h = Math.floor(s / 3600).toString().padStart(2,'0');
-            const m = Math.floor((s % 3600) / 60).toString().padStart(2,'0');
-            const sec = (s % 60).toString().padStart(2,'0');
-            document.getElementById('timer').innerText = `${h}:${m}:${sec}`;
-        });
-
-        // FONKSİYONLAR
-        function nav(p) {
-            document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-            document.getElementById('page-'+p).classList.add('active');
-            document.querySelectorAll('.icon-btn').forEach(x => x.classList.remove('active'));
-            if(p === 'files') loadFiles('');
+        function sendCmd() {
+            const i = document.getElementById('cmd');
+            fetch('/api/cmd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cmd:i.value}) });
+            i.value = '';
         }
 
-        function startSrv() { fetch('/api/start', {method:'POST'}); nav('home'); }
-        function cmd(c) { fetch('/api/cmd', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cmd:c})}); }
-        function send() { const i = document.getElementById('cmd-in'); cmd(i.value); i.value = ''; }
-        function renew() { fetch('/api/renew', {method:'POST'}); }
+        function show(id, el) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+            document.getElementById(id).classList.add('active-page');
+            document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            if(id === 'files') loadFiles('');
+        }
 
-        async function loadFiles(path) {
-            document.getElementById('path-txt').innerText = "/" + path;
-            const res = await fetch('/api/files?path=' + path);
-            const data = await res.json();
-            const box = document.getElementById('files-container');
-            box.innerHTML = "";
-            
-            if(path !== "") {
-                const up = path.split('/').slice(0,-1).join('/');
-                box.innerHTML += `<div class="file-row" onclick="loadFiles('${up}')"><i class="fas fa-level-up-alt"></i> .. (Geri)</div>`;
-            }
-
+        async function loadFiles(p) {
+            const r = await fetch('/api/files?path='+p);
+            const data = await r.json();
+            const list = document.getElementById('file-list');
+            list.innerHTML = "";
             data.forEach(f => {
-                const icon = f.type === 'folder' ? 'fa-folder' : 'fa-file';
-                const color = f.type === 'folder' ? '#f59e0b' : '#3b82f6';
-                const action = f.type === 'folder' ? `loadFiles('${path ? path + '/' + f.name : f.name}')` : '';
-                
-                box.innerHTML += `
-                    <div class="file-row" onclick="${action}">
-                        <i class="fas ${icon}" style="color:${color}"></i> ${f.name}
-                    </div>`;
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `<i class="fas ${f.isDir ? 'fa-folder' : 'fa-file'}"></i> ${f.name}`;
+                if(f.isDir) div.onclick = () => loadFiles(p ? p+'/'+f.name : f.name);
+                list.appendChild(div);
             });
         }
     </script>
